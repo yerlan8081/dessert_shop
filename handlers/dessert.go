@@ -6,12 +6,53 @@ import (
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func GetDesserts(c *gin.Context) {
 	var desserts []models.Dessert
-	database.DB.Find(&desserts)
-	c.JSON(http.StatusOK, desserts)
+	var total int64
+
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "5")
+	sort := c.DefaultQuery("sort", "id")
+	order := c.DefaultQuery("order", "asc") //desc
+	category := c.Query("category")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = 5
+	}
+
+	offset := (page - 1) * limit
+
+	query := database.DB.Model(&models.Dessert{}).Preload("Category")
+	if category != "" {
+		query = query.Where("category_id = ?", category)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		log.Println("统计总数出错:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "无法统计甜品总数"})
+		return
+	}
+
+	if err := query.Order(sort + " " + order).Limit(limit).Offset(offset).Find(&desserts).Error; err != nil {
+		log.Println("查询甜品出错:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "无法获取甜品数据"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"page":     page,
+		"limit":    limit,
+		"total":    total,
+		"desserts": desserts,
+	})
 }
 
 func CreateDessert(c *gin.Context) {

@@ -17,6 +17,8 @@ func main() {
 	r.POST("/desserts", handlers.CreateDessert)
 	r.PUT("/desserts/:id", handlers.UpdateDessert)
 	r.DELETE("/desserts/:id", handlers.DeleteDessert)
+	r.GET("/categories", handlers.GetCategories)
+	r.POST("/categories", handlers.CreateCategory)
 
 	r.Run(":8080")
 }
